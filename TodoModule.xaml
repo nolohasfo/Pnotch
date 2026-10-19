@@ -1,4 +1,4 @@
-<UserControl x:Class="NusaNotch.TodoModule"
+<UserControl x:Class="Pnotch.TodoModule"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Width="540" Height="200" Background="Transparent">

@@ -1,6 +1,6 @@
 using System;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 public class SnippetItem
 {

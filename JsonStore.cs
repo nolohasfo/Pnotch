@@ -2,12 +2,12 @@ using System;
 using System.IO;
 using System.Text.Json;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 static class JsonStore
 {
     static readonly string Dir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Nusa");
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Pnotch");
 
     public static T Load<T>(string name) where T : new()
     {

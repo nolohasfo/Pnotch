@@ -7,7 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 public partial class ClipboardModule : UserControl, INotchModule
 {

@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 public partial class App : Application
 {
@@ -8,17 +8,19 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        // Menangkap seluruh Unhandled Exception agar muncul pesan error
         this.DispatcherUnhandledException += (sender, args) =>
         {
+            // Ambil InnerException jika ada untuk melihat detail penyebab crash
+            var ex = args.Exception.InnerException ?? args.Exception;
+
             MessageBox.Show(
-                $"Aplikasi mengalami crash pada startup:\n\n{args.Exception.Message}\n\nDetail:\n{args.Exception.StackTrace}",
+                $"Aplikasi mengalami crash pada startup:\n\n{ex.Message}\n\nDetail:\n{ex.StackTrace}",
                 "Pnotch - Error Diagnostic",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
             );
 
-            args.Handled = true; // Mencegah aplikasi langsung keluar secara tiba-tiba
+            args.Handled = true;
         };
     }
 }

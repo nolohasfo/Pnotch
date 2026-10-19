@@ -1,47 +1,55 @@
-using System.Text;
-using static NusaNotch.Native;
-namespace NusaNotch;
+using System;
+using System.Runtime.InteropServices;
+using static Pnotch.Native;
 
-/// Event-driven (tanpa polling): hanya bangun saat foreground window berubah / selesai dipindah.
-sealed class FullscreenWatcher : IDisposable
+namespace Pnotch;
+
+public class FullscreenWatcher : IDisposable
 {
     public event Action<bool>? Changed;
-    readonly WinEventProc _proc;               // simpan referensi agar tidak di-GC
-    readonly IntPtr _h1, _h2;
-    readonly IntPtr _self;
-    bool _last;
 
-    public FullscreenWatcher(IntPtr selfHwnd)
+    private IntPtr _hook;
+    private readonly Native.WinEventProc _proc;
+
+    public FullscreenWatcher(IntPtr targetHwnd)
     {
-        _self = selfHwnd;
-        _proc = (_, _, _, _, _, _, _) => Evaluate();
-        _h1 = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, _proc, 0, 0, WINEVENT_OUTOFCONTEXT);
-        _h2 = SetWinEventHook(EVENT_SYSTEM_MOVESIZEEND, EVENT_SYSTEM_MOVESIZEEND, IntPtr.Zero, _proc, 0, 0, WINEVENT_OUTOFCONTEXT);
+        _proc = OnWinEvent;
+        _hook = SetWinEventHook(0x0003, 0x0003, IntPtr.Zero, _proc, 0, 0, 0);
     }
 
-    void Evaluate()
+    private void OnWinEvent(IntPtr hWinEventHook, uint eventType, IntPtr hwnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
     {
-        bool fs = IsForegroundFullscreen();
-        if (fs == _last) return;
-        _last = fs; Changed?.Invoke(fs);
+        if (hwnd == IntPtr.Zero) return;
+        bool isFs = IsFullscreenWindow(hwnd);
+        Changed?.Invoke(isFs);
     }
 
-    bool IsForegroundFullscreen()
+    private bool IsFullscreenWindow(IntPtr hwnd)
     {
-        var h = GetForegroundWindow();
-        if (h == IntPtr.Zero || h == _self) return false;
+        if (hwnd == IntPtr.Zero || hwnd == GetDesktopWindow() || hwnd == GetShellWindow()) return false;
 
-        var sb = new StringBuilder(64); GetClassName(h, sb, 64);
-        var cls = sb.ToString();
-        if (cls is "Progman" or "WorkerW" or "Shell_TrayWnd") return false;   // desktop & taskbar
+        if (GetWindowRect(hwnd, out RECT rect))
+        {
+            int screenW = (int)System.Windows.SystemParameters.PrimaryScreenWidth;
+            int screenH = (int)System.Windows.SystemParameters.PrimaryScreenHeight;
 
-        if (!GetWindowRect(h, out var r)) return false;
-        var mi = new MONITORINFO { cb = System.Runtime.InteropServices.Marshal.SizeOf<MONITORINFO>() };
-        if (!GetMonitorInfo(MonitorFromWindow(h, 2 /*NEAREST*/), ref mi)) return false;
-
-        var m = mi.rcMonitor;
-        return r.L <= m.L && r.T <= m.T && r.R >= m.R && r.B >= m.B;
+            return (rect.Left <= 0 && rect.Top <= 0 && rect.Right >= screenW && rect.Bottom >= screenH);
+        }
+        return false;
     }
 
-    public void Dispose() { UnhookWinEvent(_h1); UnhookWinEvent(_h2); }
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr hmodWinEventProc, Native.WinEventProc lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    private static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+
+    public void Dispose()
+    {
+        if (_hook != IntPtr.Zero)
+        {
+            UnhookWinEvent(_hook);
+            _hook = IntPtr.Zero;
+        }
+    }
 }

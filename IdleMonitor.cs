@@ -1,53 +1,82 @@
-using System.Windows.Threading;
-using static NusaNotch.Native;
-namespace NusaNotch;
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 
-/// 0% CPU saat idle:
-///  - Tidak ada polling. Satu timer one-shot yang hanya bangun saat batas idle kemungkinan terlampaui.
-///  - Hook input low-level HANYA dipasang selama state Resting, dan dilepas begitu pengguna kembali.
-sealed class IdleMonitor : IDisposable
+namespace Pnotch;
+
+public class IdleMonitor : IDisposable
 {
-    public event Action? WentIdle, Resumed;
-    readonly TimeSpan _threshold;
-    readonly DispatcherTimer _timer = new();
-    readonly HookProc _mouse, _kbd;
-    IntPtr _hMouse, _hKbd;
-    public bool IsIdle { get; private set; }
+    public event Action? WentIdle;
+    public event Action? Resumed;
 
-    public IdleMonitor(TimeSpan threshold)
+    private Native.HookProc? _hookProc;
+    private IntPtr _hookHandle = IntPtr.Zero;
+    private System.Windows.Threading.DispatcherTimer? _timer;
+    private readonly TimeSpan _timeout;
+    private bool _isIdle;
+
+    public IdleMonitor(TimeSpan timeout)
     {
-        _threshold = threshold;
-        _mouse = (c, w, l) => { OnInput(); return CallNextHookEx(_hMouse, c, w, l); };
-        _kbd   = (c, w, l) => { OnInput(); return CallNextHookEx(_hKbd, c, w, l); };
-        _timer.Tick += (_, _) => Check();
-        Arm(_threshold);
+        _timeout = timeout;
+        _hookProc = HookCallback;
+
+        using var curProcess = Process.GetCurrentProcess();
+        using var curModule = curProcess.MainModule;
+        IntPtr modHandle = GetModuleHandle(curModule?.ModuleName);
+
+        _hookHandle = SetWindowsHookEx(14, _hookProc, modHandle, 0);
+
+        _timer = new System.Windows.Threading.DispatcherTimer { Interval = _timeout };
+        _timer.Tick += (s, e) =>
+        {
+            if (!_isIdle)
+            {
+                _isIdle = true;
+                WentIdle?.Invoke();
+            }
+        };
+        _timer.Start();
     }
 
-    void Arm(TimeSpan t) { _timer.Interval = t; _timer.Start(); }
-
-    void Check()
+    private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        _timer.Stop();
-        var lii = new LASTINPUTINFO { cb = (uint)System.Runtime.InteropServices.Marshal.SizeOf<LASTINPUTINFO>() };
-        GetLastInputInfo(ref lii);
-        var idle = TimeSpan.FromMilliseconds(unchecked((uint)Environment.TickCount - lii.dwTime));
-        if (idle < _threshold) { Arm(_threshold - idle); return; }   // belum idle: tidur lagi sampai waktunya
-
-        IsIdle = true;
-        var mod = GetModuleHandle(null);
-        _hMouse = SetWindowsHookEx(WH_MOUSE_LL, _mouse, mod, 0);
-        _hKbd   = SetWindowsHookEx(WH_KEYBOARD_LL, _kbd, mod, 0);
-        WentIdle?.Invoke();
+        if (nCode >= 0)
+        {
+            ResetIdle();
+        }
+        return CallNextHookEx(_hookHandle, nCode, wParam, lParam);
     }
 
-    void OnInput()
+    private void ResetIdle()
     {
-        if (!IsIdle) return;
-        IsIdle = false;
-        UnhookWindowsHookEx(_hMouse); UnhookWindowsHookEx(_hKbd);
-        Resumed?.Invoke();
-        Arm(_threshold);
+        _timer?.Stop();
+        if (_isIdle)
+        {
+            _isIdle = false;
+            Resumed?.Invoke();
+        }
+        _timer?.Start();
     }
 
-    public void Dispose() { _timer.Stop(); if (IsIdle) { UnhookWindowsHookEx(_hMouse); UnhookWindowsHookEx(_hKbd); } }
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern IntPtr SetWindowsHookEx(int idHook, Native.HookProc lpfn, IntPtr hMod, uint dwThreadId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+    private static extern IntPtr GetModuleHandle(string? lpModuleName);
+
+    public void Dispose()
+    {
+        _timer?.Stop();
+        if (_hookHandle != IntPtr.Zero)
+        {
+            UnhookWindowsHookEx(_hookHandle);
+            _hookHandle = IntPtr.Zero;
+        }
+    }
 }

@@ -2,7 +2,7 @@
 
 ## Lapisan
 ```
-NusaNotch/
+Pnotch/
 ├─ Shell/            MainWindow (borderless, topmost, no-activate), NotchStateMachine,
 │                    FullscreenWatcher, IdleMonitor, MonitorPlacement
 ├─ Modules/          INotchModule { Id, View, OnOpened(), OnClosed() }

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Windows.Media.Control;
 using Windows.Storage.Streams;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 public class SmtcService
 {

@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 public interface INotchModule
 {

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -8,16 +10,17 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using static NusaNotch.Native;
+using static Pnotch.Native;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 public enum NotchState { Resting, Closed, Open, Hidden }
 
 public partial class MainWindow : Window
 {
     // Dimensi DIP
-    const double ClosedW = 220, ClosedH = 34, OpenW = 540, OpenH = 200;
+    const double ClosedW = 220, ClosedH = 34, OpenW = 540, OpenH = 210;
+    const double ThinW = 100, ThinH = 3;
     const int HoverOpenDelayMs = 90, HoverCloseDelayMs = 300;
 
     NotchState _state = NotchState.Closed;
@@ -28,38 +31,46 @@ public partial class MainWindow : Window
     IdleMonitor? _idle;
     readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromSeconds(1) };
     
-    // Timer Animasi Muka Chiikawa
+    readonly DispatcherTimer _occlusionTimer = new() { Interval = TimeSpan.FromMilliseconds(350) };
+    bool _isOccluded = false;
+
     readonly DispatcherTimer _chiikawaTimer = new();
     readonly Random _random = new();
 
-    // Daftar Modul Pager (Multi Halaman)
+    // Deklarasi field modul
     private readonly List<INotchModule> _modules = new();
-    private readonly MediaModule _mediaModule = new MediaModule();    
-    private readonly TodoModule _todoModule = new TodoModule();
-    private readonly ShelfModule _shelfModule = new ShelfModule();
-    private readonly ClipboardModule _clipboardModule = new ClipboardModule(); // <-- Tambahkan ini
+    private MediaModule _mediaModule = null!;
+    private TodoModule _todoModule = null!;
+    private ShelfModule _shelfModule = null!;
+    private ClipboardModule _clipboardModule = null!;
     private int _moduleIndex = 0;
+
+    [DllImport("kernel32.dll")]
+    private static extern bool SetProcessWorkingSetSize(IntPtr proc, IntPtr min, IntPtr max);
 
     public MainWindow()
     {
         InitializeComponent();
 
-        // Masukkan semua modul ke daftar halaman (Total 3 Modul)
+        // Buat instance modul setelah InitializeComponent dipanggil
+        _mediaModule = new MediaModule();
+        _todoModule = new TodoModule();
+        _shelfModule = new ShelfModule();
+        _clipboardModule = new ClipboardModule();
+
         _modules.Add(_mediaModule);
         _modules.Add(_todoModule);
         _modules.Add(_shelfModule);
-        _modules.Add(_clipboardModule); // <-- Tambahkan ini
+        _modules.Add(_clipboardModule);
 
-        // Tampilkan halaman pertama
         OpenHost.Content = _modules[_moduleIndex].View;
         UpdatePageDots();
-
-        // Shoulder Tap untuk To-Do List saat tenggat waktu tiba
         _todoModule.RequestShoulderTap += () =>
         {
             Dispatcher.Invoke(() =>
             {
-                SwitchModule(_modules.IndexOf(_todoModule));
+                int todoIdx = _modules.IndexOf(_todoModule);
+                if (todoIdx != -1) SwitchModule(todoIdx);
                 Expand();
                 var autoCloseTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
                 autoCloseTimer.Tick += (s, ev) => { autoCloseTimer.Stop(); Collapse(); };
@@ -67,7 +78,6 @@ public partial class MainWindow : Window
             });
         };
 
-        // Ganti halaman dengan Scroll Wheel mouse saat Notch terbuka
         Notch.MouseWheel += Notch_MouseWheel;
 
         Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
@@ -78,12 +88,12 @@ public partial class MainWindow : Window
         Notch.MouseEnter += (_, _) => Schedule(Expand, HoverOpenDelayMs);
         Notch.MouseLeave += (_, _) => Schedule(Collapse, HoverCloseDelayMs);
 
-        // Switch otomatis ke Shelf saat file di-drag ke atas Notch
         Notch.DragEnter += (s, e) =>
         {
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            int shelfIdx = _modules.IndexOf(_shelfModule);
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) && shelfIdx != -1)
             {
-                SwitchModule(_modules.IndexOf(_shelfModule));
+                SwitchModule(shelfIdx);
                 Schedule(Expand, 0);
             }
             else
@@ -93,7 +103,6 @@ public partial class MainWindow : Window
         };
         Notch.DragLeave += (_, _) => Schedule(Collapse, HoverCloseDelayMs);
 
-        // Timer Jam & Baterai Realtime Setiap Detik
         _clock.Tick += (_, _) =>
         {
             ClockText.Text = DateTime.Now.ToString("HH:mm");
@@ -103,10 +112,12 @@ public partial class MainWindow : Window
         UpdateBattery();
         _clock.Start();
 
-        // Setup Timer Berganti Ekspresi Chiikawa (Tiap 3-6 Detik)
         _chiikawaTimer.Interval = TimeSpan.FromSeconds(3);
         _chiikawaTimer.Tick += (_, _) => ChangeChiikawaExpression();
         _chiikawaTimer.Start();
+
+        _occlusionTimer.Tick += (_, _) => CheckAreaOcclusion();
+        _occlusionTimer.Start();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -123,6 +134,66 @@ public partial class MainWindow : Window
         _idle = new IdleMonitor(TimeSpan.FromSeconds(60));
         _idle.WentIdle += () => Dispatcher.Invoke(EnterResting);
         _idle.Resumed  += () => Dispatcher.Invoke(ExitResting);
+    }
+
+    private void CheckAreaOcclusion()
+    {
+        IntPtr fgHwnd = GetForegroundWindow();
+        var myHwnd = new WindowInteropHelper(this).Handle;
+
+        if (fgHwnd == IntPtr.Zero || fgHwnd == myHwnd || fgHwnd == GetDesktopWindow() || fgHwnd == GetShellWindow())
+        {
+            SetOccluded(false);
+            return;
+        }
+
+        if (IsIconic(fgHwnd))
+        {
+            SetOccluded(false);
+            return;
+        }
+
+        if (GetWindowRect(fgHwnd, out RECT rect))
+        {
+            double screenW = SystemParameters.PrimaryScreenWidth;
+            int notchLeft = (int)(screenW / 2 - 110);
+            int notchRight = (int)(screenW / 2 + 110);
+            int notchBottom = 35;
+
+            bool overlaps = (rect.Left < notchRight && rect.Right > notchLeft && rect.Top < notchBottom && rect.Bottom > 0);
+            SetOccluded(overlaps);
+        }
+    }
+
+    private void SetOccluded(bool occluded)
+    {
+        if (_isOccluded == occluded) return;
+        _isOccluded = occluded;
+
+        if (_state == NotchState.Closed || _state == NotchState.Resting)
+        {
+            if (_isOccluded)
+                EnterThinBar();
+            else
+                ExitThinBar();
+        }
+    }
+
+    private void EnterThinBar()
+    {
+        Fade(ClosedView, 0, 150);
+        Fade(EyesView, 0, 150);
+        AnimateSize(ThinW, ThinH, 200);
+    }
+
+    private void ExitThinBar()
+    {
+        AnimateSize(ClosedW, ClosedH, 220, onDone: () =>
+        {
+            Fade(ClosedView, 1, 180);
+            ClockText.Text = DateTime.Now.ToString("HH:mm");
+            UpdateBattery();
+        });
     }
 
     void Schedule(Action a, int ms)
@@ -153,13 +224,29 @@ public partial class MainWindow : Window
         if (Notch.IsMouseOver || Notch.IsMouseDirectlyOver) return;
         _state = NotchState.Closed;
         Fade(OpenContainer, 0, 120);
-        AnimateSize(ClosedW, ClosedH, 220, onDone: () => OpenContainer.Visibility = Visibility.Collapsed);
-        Fade(ClosedView, 1, 200, delayMs: 100);
-        ClockText.Text = DateTime.Now.ToString("HH:mm"); 
-        UpdateBattery();
+
+        if (_isOccluded)
+        {
+            AnimateSize(ThinW, ThinH, 220, onDone: () => 
+            {
+                OpenContainer.Visibility = Visibility.Collapsed;
+                CompactMemory();
+            });
+        }
+        else
+        {
+            AnimateSize(ClosedW, ClosedH, 220, onDone: () => 
+            {
+                OpenContainer.Visibility = Visibility.Collapsed;
+                CompactMemory();
+            });
+            Fade(ClosedView, 1, 200, delayMs: 100);
+            ClockText.Text = DateTime.Now.ToString("HH:mm"); 
+            UpdateBattery();
+        }
+
         _clock.Start();
         _chiikawaTimer.Start();
-
         _modules[_moduleIndex].OnClosed();
     }
 
@@ -169,29 +256,37 @@ public partial class MainWindow : Window
         _state = NotchState.Resting;
         _clock.Stop();
         _chiikawaTimer.Stop();
-        Fade(ClosedView, 0, 600);
-        Fade(EyesView, 1, 600);
+        
+        if (!_isOccluded)
+        {
+            Fade(ClosedView, 0, 600);
+            Fade(EyesView, 1, 600);
+        }
+        CompactMemory();
     }
 
     void ExitResting()
     {
         if (_state != NotchState.Resting) return;
         _state = NotchState.Closed;
-        Fade(ClosedView, 1, 250);
-        Fade(EyesView, 1, 0);
-        ClockText.Text = DateTime.Now.ToString("HH:mm"); 
-        UpdateBattery();
+        
+        if (!_isOccluded)
+        {
+            Fade(ClosedView, 1, 250);
+            Fade(EyesView, 1, 0);
+            ClockText.Text = DateTime.Now.ToString("HH:mm"); 
+            UpdateBattery();
+        }
         _clock.Start();
         _chiikawaTimer.Start();
     }
 
     void OnFullscreenChanged(bool isFs)
     {
-        if (isFs) { _stateBeforeHidden = _state; _state = NotchState.Hidden; _clock.Stop(); _chiikawaTimer.Stop(); Hide(); }
-        else      { _state = NotchState.Closed; Show(); _clock.Start(); _chiikawaTimer.Start(); }
+        if (isFs) { _stateBeforeHidden = _state; _state = NotchState.Hidden; _clock.Stop(); _chiikawaTimer.Stop(); _occlusionTimer.Stop(); Hide(); }
+        else      { _state = NotchState.Closed; Show(); _clock.Start(); _chiikawaTimer.Start(); _occlusionTimer.Start(); }
     }
 
-    // ---------- Update Baterai Realtime ----------
     void UpdateBattery()
     {
         if (GetSystemPowerStatus(out var status))
@@ -201,18 +296,21 @@ public partial class MainWindow : Window
                 string chargingSymbol = status.ACLineStatus == 1 ? "⚡" : "";
                 BatteryText.Text = $"{chargingSymbol}{status.BatteryLifePercent}%";
 
-                BatteryText.Foreground = status.BatteryLifePercent <= 20 
-                    ? new SolidColorBrush(Color.FromRgb(239, 68, 68)) 
-                    : new SolidColorBrush(Color.FromRgb(74, 222, 128));
+                if (status.BatteryLifePercent <= 20)
+                    BatteryText.Foreground = new SolidColorBrush(Color.FromRgb(239, 68, 68));
+                else if (status.ACLineStatus == 1)
+                    BatteryText.Foreground = new SolidColorBrush(Color.FromRgb(255, 199, 44));
+                else
+                    BatteryText.Foreground = new SolidColorBrush(Color.FromRgb(80, 200, 255));
             }
             else
             {
                 BatteryText.Text = "AC";
+                BatteryText.Foreground = new SolidColorBrush(Color.FromRgb(255, 199, 44));
             }
         }
     }
 
-    // ---------- Mengganti Ekspresi Chiikawa ----------
     private void ChangeChiikawaExpression()
     {
         FaceNormal.Visibility = Visibility.Collapsed;
@@ -232,7 +330,6 @@ public partial class MainWindow : Window
         _chiikawaTimer.Interval = TimeSpan.FromSeconds(_random.Next(3, 7));
     }
 
-    // ---------- Logika Pager Modul ----------
     public void SwitchModule(int newIndex)
     {
         if (_modules.Count == 0) return;
@@ -273,11 +370,14 @@ public partial class MainWindow : Window
         for (int i = 0; i < _modules.Count; i++)
         {
             int idx = i;
+            bool isActive = (idx == _moduleIndex);
             var dot = new Ellipse
             {
-                Width = idx == _moduleIndex ? 8 : 6,
-                Height = idx == _moduleIndex ? 8 : 6,
-                Fill = idx == _moduleIndex ? Brushes.White : new SolidColorBrush(Color.FromRgb(88, 88, 88)),
+                Width = isActive ? 10 : 6,
+                Height = 6,
+                Fill = isActive 
+                    ? new SolidColorBrush(Color.FromRgb(255, 199, 44))
+                    : new SolidColorBrush(Color.FromRgb(30, 58, 96)),
                 Margin = new Thickness(3, 0, 3, 0),
                 Cursor = Cursors.Hand
             };
@@ -286,7 +386,18 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---------- Animasi ----------
+    private void CompactMemory()
+    {
+        try
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            SetProcessWorkingSetSize(Process.GetCurrentProcess().Handle, (IntPtr)(-1), (IntPtr)(-1));
+        }
+        catch { }
+    }
+
     void AnimateSize(double w, double h, int ms, Action? onDone = null)
     {
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };

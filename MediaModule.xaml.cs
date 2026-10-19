@@ -5,7 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
-namespace NusaNotch;
+namespace Pnotch;
 
 public partial class MediaModule : UserControl, INotchModule
 {
@@ -85,6 +85,7 @@ public partial class MediaModule : UserControl, INotchModule
                 var bmp = new BitmapImage();
                 bmp.BeginInit();
                 bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.DecodePixelWidth = 96;
                 bmp.StreamSource = _smtc.ThumbnailStream;
                 bmp.EndInit();
                 bmp.Freeze();
