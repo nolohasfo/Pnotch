@@ -12,13 +12,23 @@
 
 - **🌙 Persona 3 Reload Aesthetic**: Built with Velvet Navy (`#080F20`), Sky Cyan (`#00A6FF` / `#50C8FF`), and Persona Gold (`#FFC72C`) accents.
 - **🐰 Dynamic Chiikawa Faces**: Native WPF vector animations with expressions that change dynamically (Normal, Blink, Cute 🥺, and Happy).
-- **⚡ Live Status Bar**: Displays real-time system battery percentage (with charging indicator) and system clock.
-- **🎵 Integrated Media Player**: Windows SMTC integration displaying real-time music metadata, album artwork, timeline progress bar, playback controls, and lyrics UI overlay.
-- **📝 Live Countdown To-Do List**: Task manager featuring real-time countdown timers and automatic notification pop-ups when task deadlines arrive.
-- **📁 Drag-and-Drop File Shelf**: Quick file/folder container. Drag items in, click to execute, or drag items out anywhere to remove them automatically from the shelf.
-- **⚙️ Auto Startup**: Integrates seamlessly into Windows Startup to launch quietly on boot.
+- 🙈 **Auto-Hide Strip Mode**: Notch otomatis menyusut menjadi garis tipis (100x3px) saat terhalang oleh jendela aplikasi aktif agar tidak mengganggu layar.
+- 📱 **Multi-Module Pager System**:
+  - 🎵 **Media Player**: Kontrol pemutar musik real-time (Spotify, YouTube, dll) lengkap dengan sampul album.
+  - ✅ **Todo List & Alarm**: Catatan tugas dengan *shoulder tap notification* saat tenggat waktu tiba.
+  - 📁 **File Shelf**: Area *drag & drop* file cepat.
+  - 📋 **Clipboard Manager**: Riwayat clipboard interaktif.
+- ⚡ **Ultra-Low RAM Usage**: Optimasi memori khusus (~15–30 MB RAM) dengan kompresi WorkingSet otomatis saat idle.
+- 🔋 **Real-time Status Header**: Indikator jam dan baterai responsif.
 
 ---
+
+<img width="1919" height="1199" alt="image" src="https://github.com/user-attachments/assets/ad7eaa8e-248f-472b-8d02-29382b8a0890" /><img width="1919" height="1149" alt="image" src="https://github.com/user-attachments/assets/b130d812-6e03-4a61-aaf0-78edda2ca57d" /><img width="1919" height="1149" alt="image" src="https://github.com/user-attachments/assets/6a0906aa-8970-46e0-a3ef-e62a7af79766" /><img width="1916" height="1149" alt="image" src="https://github.com/user-attachments/assets/37c181cc-0cc2-4fa1-a10a-f72fd4ac7e22" /><img width="1917" height="1149" alt="image" src="https://github.com/user-attachments/assets/fbb831e5-82c7-43ff-a8a9-db8878d95632" />
+
+
+
+
+
 
 ## 🛠️ Tech Stack & Architecture
 
