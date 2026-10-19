@@ -12,15 +12,14 @@
 
 - **🌙 Persona 3 Reload Aesthetic**: Built with Velvet Navy (`#080F20`), Sky Cyan (`#00A6FF` / `#50C8FF`), and Persona Gold (`#FFC72C`) accents.
 - **🐰 Dynamic Chiikawa Faces**: Native WPF vector animations with expressions that change dynamically (Normal, Blink, Cute 🥺, and Happy).
-- 🙈 **Auto-Hide Strip Mode**: Notch otomatis menyusut menjadi garis tipis (100x3px) saat terhalang oleh jendela aplikasi aktif agar tidak mengganggu layar.
+- 🙈 **Auto-Hide Strip Mode**: Automatically shrinks into a subtle 3px top strip (100x3px) when obstructed by active foreground windows to keep your display clutter-free.
 - 📱 **Multi-Module Pager System**:
-  - 🎵 **Media Player**: Kontrol pemutar musik real-time (Spotify, YouTube, dll) lengkap dengan sampul album.
-  - ✅ **Todo List & Alarm**: Catatan tugas dengan *shoulder tap notification* saat tenggat waktu tiba.
-  - 📁 **File Shelf**: Area *drag & drop* file cepat.
-  - 📋 **Clipboard Manager**: Riwayat clipboard interaktif.
-- ⚡ **Ultra-Low RAM Usage**: Optimasi memori khusus (~15–30 MB RAM) dengan kompresi WorkingSet otomatis saat idle.
-- 🔋 **Real-time Status Header**: Indikator jam dan baterai responsif.
-
+  - 🎵 **Media Player**: Real-time media playback control (Spotify, YouTube, web browsers) complete with album art downscaling.
+  - ✅ **Todo List & Alarm**: Task management with automated shoulder-tap notifications when deadlines hit.
+  - 📁 **File Shelf**: Quick drag-and-drop temporary storage area.
+  - 📋 **Clipboard Manager**: Interactive clipboard history log.
+- ⚡ **Ultra-Low RAM Footprint**: Memory-optimized (~15–30 MB RAM) using Win32 WorkingSet compaction upon idling.
+- 🔋 **Real-Time Status Header**: Live clock and responsive battery status monitor.
 ---
 
 <img width="1919" height="1199" alt="image" src="https://github.com/user-attachments/assets/ad7eaa8e-248f-472b-8d02-29382b8a0890" /><img width="1919" height="1149" alt="image" src="https://github.com/user-attachments/assets/b130d812-6e03-4a61-aaf0-78edda2ca57d" /><img width="1919" height="1149" alt="image" src="https://github.com/user-attachments/assets/6a0906aa-8970-46e0-a3ef-e62a7af79766" /><img width="1916" height="1149" alt="image" src="https://github.com/user-attachments/assets/37c181cc-0cc2-4fa1-a10a-f72fd4ac7e22" /><img width="1917" height="1149" alt="image" src="https://github.com/user-attachments/assets/fbb831e5-82c7-43ff-a8a9-db8878d95632" />
@@ -55,7 +54,12 @@
    git clone [https://github.com/USERNAME/Pnotch.git](https://github.com/USERNAME/Pnotch.git)
    cd Pnotch
   RUN CODE:
+  
   dotnet run
+  
+  
   BUILD .EXE:
+  
+  
   dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
   
