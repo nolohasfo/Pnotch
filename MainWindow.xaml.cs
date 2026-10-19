@@ -34,9 +34,10 @@ public partial class MainWindow : Window
 
     // Daftar Modul Pager (Multi Halaman)
     private readonly List<INotchModule> _modules = new();
-    private readonly MediaModule _mediaModule = new MediaModule();
+    private readonly MediaModule _mediaModule = new MediaModule();    
     private readonly TodoModule _todoModule = new TodoModule();
     private readonly ShelfModule _shelfModule = new ShelfModule();
+    private readonly ClipboardModule _clipboardModule = new ClipboardModule(); // <-- Tambahkan ini
     private int _moduleIndex = 0;
 
     public MainWindow()
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
         _modules.Add(_mediaModule);
         _modules.Add(_todoModule);
         _modules.Add(_shelfModule);
+        _modules.Add(_clipboardModule); // <-- Tambahkan ini
 
         // Tampilkan halaman pertama
         OpenHost.Content = _modules[_moduleIndex].View;

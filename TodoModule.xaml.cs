@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.Linq;
+using System.Media;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Threading;
 
 namespace NusaNotch;
@@ -13,7 +16,21 @@ public class TodoDisplayItem : INotifyPropertyChanged
 {
     public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public bool Done { get; set; }
+
+    private bool _done;
+    public bool Done
+    {
+        get => _done;
+        set
+        {
+            if (_done != value)
+            {
+                _done = value;
+                OnPropertyChanged(nameof(Done));
+            }
+        }
+    }
+
     public DateTime? Due { get; set; }
 
     private string _dueText = string.Empty;
@@ -30,12 +47,13 @@ public class TodoDisplayItem : INotifyPropertyChanged
         }
     }
 
-    // Hitung sisa waktu mundur setiap detik
+    public bool AlarmFired { get; set; }
+
     public void UpdateCountdown()
     {
         if (!Due.HasValue)
         {
-            DueText = "";
+            DueText = "No Alarm";
             return;
         }
 
@@ -43,7 +61,7 @@ public class TodoDisplayItem : INotifyPropertyChanged
 
         if (diff.TotalSeconds <= 0)
         {
-            DueText = "Waktu Habis!";
+            DueText = "00:00";
         }
         else if (diff.TotalHours >= 1)
         {
@@ -59,14 +77,27 @@ public class TodoDisplayItem : INotifyPropertyChanged
     private void OnPropertyChanged(string prop) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(prop));
 }
 
+// Converters untuk template WPF XAML Custom Checkbox
+public class BoolToVisConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        (value is bool b && b) ? Visibility.Visible : Visibility.Collapsed;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+}
+
+public class CheckBgConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        (value is bool b && b) ? System.Windows.Media.Brushes.MediumSeaGreen : System.Windows.Media.Brushes.Transparent;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+}
+
 public partial class TodoModule : UserControl, INotchModule
 {
     private List<TodoItem> _items = new();
     private readonly ObservableCollection<TodoDisplayItem> _displayItems = new();
-    private readonly DispatcherTimer _scheduleTimer = new();
-    
-    // Timer 1 detik untuk meng-update teks hitungan mundur di UI
-    private readonly DispatcherTimer _uiCountdownTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly DispatcherTimer _uiTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private string? _editingTaskId;
 
     public event Action? RequestShoulderTap;
 
@@ -75,12 +106,15 @@ public partial class TodoModule : UserControl, INotchModule
 
     public TodoModule()
     {
+        // Register Converter di Resources secara programmatic jika belum ada
+        if (!Resources.Contains("BoolToVisConverter")) Resources.Add("BoolToVisConverter", new BoolToVisConverter());
+        if (!Resources.Contains("CheckBgConverter")) Resources.Add("CheckBgConverter", new CheckBgConverter());
+
         InitializeComponent();
         ListTodos.ItemsSource = _displayItems;
 
-        _scheduleTimer.Tick += ScheduleTimer_Tick;
-        _uiCountdownTimer.Tick += (_, _) => UpdateCountdowns();
-        _uiCountdownTimer.Start();
+        _uiTimer.Tick += (_, _) => OnTimerTick();
+        _uiTimer.Start();
 
         LoadData();
     }
@@ -88,7 +122,7 @@ public partial class TodoModule : UserControl, INotchModule
     public void OnOpened()
     {
         LoadData();
-        _uiCountdownTimer.Start();
+        _uiTimer.Start();
     }
 
     public void OnClosed()
@@ -100,13 +134,11 @@ public partial class TodoModule : UserControl, INotchModule
     {
         _items = JsonStore.Load<List<TodoItem>>("todos");
         RefreshDisplay();
-        RescheduleTimer();
     }
 
     private void SaveData()
     {
         JsonStore.Save("todos", _items);
-        RescheduleTimer();
     }
 
     private void RefreshDisplay()
@@ -124,37 +156,44 @@ public partial class TodoModule : UserControl, INotchModule
             displayItem.UpdateCountdown();
             _displayItems.Add(displayItem);
         }
+
+        UpdateProgressStats();
     }
 
-    private void UpdateCountdowns()
+    private void UpdateProgressStats()
     {
-        foreach (var item in _displayItems)
+        int doneCount = _items.Count(x => x.Done);
+        int totalCount = _items.Count;
+        TxtProgressFraction.Text = $"{doneCount}/{totalCount}";
+        TxtHeaderDate.Text = DateTime.Now.ToString("ddd dd MMM yyyy HH:mm");
+    }
+
+    private void OnTimerTick()
+    {
+        TxtHeaderDate.Text = DateTime.Now.ToString("ddd dd MMM yyyy HH:mm");
+
+        foreach (var item in _items.ToList())
         {
             item.UpdateCountdown();
+
+            // Cek jika timer alarm habis
+            if (item.Due.HasValue && !item.Done && !item.AlarmFired && item.Due.Value <= DateTime.Now)
+            {
+                item.AlarmFired = true;
+                TriggerAlarmSound();
+            }
         }
     }
 
-    private void BtnAdd_Click(object sender, RoutedEventArgs e)
+    private void TriggerAlarmSound()
     {
-        if (string.IsNullOrWhiteSpace(TxtTaskTitle.Text)) return;
-
-        DateTime? due = null;
-        if (CmbDue.SelectedIndex == 1) due = DateTime.Now.AddMinutes(15);
-        else if (CmbDue.SelectedIndex == 2) due = DateTime.Now.AddHours(1);
-        else if (CmbDue.SelectedIndex == 3) due = DateTime.Now.AddHours(3);
-
-        _items.Add(new TodoItem
+        try
         {
-            Title = TxtTaskTitle.Text.Trim(),
-            Done = false,
-            Due = due
-        });
+            SystemSounds.Exclamation.Play();
+        }
+        catch { }
 
-        TxtTaskTitle.Clear();
-        CmbDue.SelectedIndex = 0;
-
-        SaveData();
-        RefreshDisplay();
+        RequestShoulderTap?.Invoke();
     }
 
     private void CheckBox_Click(object sender, RoutedEventArgs e)
@@ -165,45 +204,85 @@ public partial class TodoModule : UserControl, INotchModule
             if (item != null)
             {
                 item.Done = cb.IsChecked ?? false;
+                displayItem.Done = item.Done;
                 SaveData();
+                UpdateProgressStats();
             }
         }
     }
 
-    private void BtnDelete_Click(object sender, RoutedEventArgs e)
+    // --- DIALOG MODAL ADD / EDIT TASK ---
+    private void BtnOpenAdd_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is string id)
+        _editingTaskId = null;
+        TxtModalTitle.Text = "Add New Task";
+        TxtTaskTitle.Clear();
+        CmbDue.SelectedIndex = 0;
+        BtnDeleteTask.Visibility = Visibility.Collapsed;
+        TaskOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void BtnOpenEdit_Click(object sender, RoutedEventArgs e)
+    {
+        var firstItem = _items.FirstOrDefault();
+        if (firstItem == null) return;
+
+        _editingTaskId = firstItem.Id;
+        TxtModalTitle.Text = "Edit Task";
+        TxtTaskTitle.Text = firstItem.Title;
+        CmbDue.SelectedIndex = 0;
+        BtnDeleteTask.Visibility = Visibility.Visible;
+        TaskOverlay.Visibility = Visibility.Visible;
+    }
+
+    private void BtnSaveTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(TxtTaskTitle.Text)) return;
+
+        DateTime? due = null;
+        if (CmbDue.SelectedIndex == 1) due = DateTime.Now.AddMinutes(15);
+        else if (CmbDue.SelectedIndex == 2) due = DateTime.Now.AddHours(1);
+        else if (CmbDue.SelectedIndex == 3) due = DateTime.Now.AddHours(3);
+
+        if (_editingTaskId == null)
         {
-            _items.RemoveAll(x => x.Id == id);
+            // Tambah baru
+            _items.Add(new TodoItem
+            {
+                Title = TxtTaskTitle.Text.Trim(),
+                Done = false,
+                Due = due
+            });
+        }
+        else
+        {
+            // Edit item
+            var item = _items.FirstOrDefault(x => x.Id == _editingTaskId);
+            if (item != null)
+            {
+                item.Title = TxtTaskTitle.Text.Trim();
+                if (due.HasValue) item.Due = due;
+            }
+        }
+
+        SaveData();
+        RefreshDisplay();
+        TaskOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void BtnDeleteTask_Click(object sender, RoutedEventArgs e)
+    {
+        if (_editingTaskId != null)
+        {
+            _items.RemoveAll(x => x.Id == _editingTaskId);
             SaveData();
             RefreshDisplay();
         }
+        TaskOverlay.Visibility = Visibility.Collapsed;
     }
 
-    private void RescheduleTimer()
+    private void BtnCancelOverlay_Click(object sender, RoutedEventArgs e)
     {
-        _scheduleTimer.Stop();
-
-        var nextDue = _items
-            .Where(x => !x.Done && x.Due.HasValue && x.Due.Value > DateTime.Now)
-            .OrderBy(x => x.Due!.Value)
-            .FirstOrDefault();
-
-        if (nextDue?.Due is DateTime dueTime)
-        {
-            var timeSpan = dueTime - DateTime.Now;
-            if (timeSpan.TotalMilliseconds > 0)
-            {
-                _scheduleTimer.Interval = timeSpan;
-                _scheduleTimer.Start();
-            }
-        }
-    }
-
-    private void ScheduleTimer_Tick(object? sender, EventArgs e)
-    {
-        _scheduleTimer.Stop();
-        RequestShoulderTap?.Invoke();
-        RescheduleTimer();
+        TaskOverlay.Visibility = Visibility.Collapsed;
     }
 }

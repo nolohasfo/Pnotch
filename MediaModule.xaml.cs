@@ -12,6 +12,10 @@ public partial class MediaModule : UserControl, INotchModule
     private readonly SmtcService _smtc = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
+    private TimeSpan _basePosition = TimeSpan.Zero;
+    private TimeSpan _knownEndTime = TimeSpan.Zero;
+    private DateTime _lastSyncTime = DateTime.MinValue;
+
     public string Id => "Media";
     public UIElement View => this;
 
@@ -19,22 +23,53 @@ public partial class MediaModule : UserControl, INotchModule
     {
         InitializeComponent();
 
-        _smtc.MediaPropertiesChanged += () => Dispatcher.Invoke(UpdateMediaUI);
-        _smtc.TimelinePropertiesChanged += () => Dispatcher.Invoke(UpdateTimelineUI);
+        _smtc.MediaPropertiesChanged += () => Dispatcher.Invoke(OnMediaPropertiesChanged);
+        _smtc.TimelinePropertiesChanged += () => Dispatcher.Invoke(OnTimelinePropertiesChanged);
 
         _timer.Tick += (_, _) => UpdateTimelineUI();
+
+        // Cukup jalankan SMTC 1x di sini saat modul dibuat
+        _smtc.Start();
+        _timer.Start();
     }
 
     public void OnOpened()
     {
-        _smtc.Start();
-        _timer.Start();
+        // Jangan panggil _smtc.Start() lagi di sini
         UpdateMediaUI();
+        UpdateTimelineUI();
     }
 
     public void OnClosed()
     {
-        _timer.Stop();
+        // Biarkan timer tetap berjalan di background agar perhitungan detik posisi tidak terhenti
+    }
+
+    private void OnMediaPropertiesChanged()
+    {
+        UpdateMediaUI();
+        
+        // Reset timestamp saat ganti lagu
+        _basePosition = _smtc.Position;
+        _lastSyncTime = DateTime.Now;
+        UpdateTimelineUI();
+    }
+
+    private void OnTimelinePropertiesChanged()
+    {
+        // Abaikan sinyal '0' dari Windows jika lagu sedang berjalan dan kita sudah punya posisi valid
+        if (_smtc.Position > TimeSpan.Zero || !_smtc.IsPlaying)
+        {
+            _basePosition = _smtc.Position;
+            _lastSyncTime = DateTime.Now;
+        }
+
+        if (_smtc.EndTime > TimeSpan.Zero)
+        {
+            _knownEndTime = _smtc.EndTime;
+        }
+
+        UpdateTimelineUI();
     }
 
     private void UpdateMediaUI()
@@ -77,13 +112,36 @@ public partial class MediaModule : UserControl, INotchModule
 
     private void UpdateTimelineUI()
     {
-        if (_smtc.EndTime.TotalSeconds > 0)
+        TxtHeaderDate.Text = DateTime.Now.ToString("ddd dd MMM yyyy HH:mm");
+
+        TimeSpan endTime = _smtc.EndTime > TimeSpan.Zero ? _smtc.EndTime : _knownEndTime;
+        TimeSpan currentPos = _basePosition;
+
+        // Hitung estimasi real-time jika media sedang berputar
+        if (_smtc.IsPlaying && _lastSyncTime != DateTime.MinValue)
         {
-            ProgMedia.Value = (_smtc.Position.TotalSeconds / _smtc.EndTime.TotalSeconds) * 100;
+            var elapsed = DateTime.Now - _lastSyncTime;
+            currentPos = _basePosition + elapsed;
+        }
+
+        if (endTime.TotalSeconds > 0)
+        {
+            if (currentPos > endTime) currentPos = endTime;
+            if (currentPos < TimeSpan.Zero) currentPos = TimeSpan.Zero;
+
+            ProgMedia.Value = (currentPos.TotalSeconds / endTime.TotalSeconds) * 100;
+            TxtPosition.Text = currentPos.ToString(@"mm\:ss");
+
+            var remaining = endTime - currentPos;
+            TxtRemaining.Text = remaining.TotalSeconds > 0 
+                ? $"-{remaining:mm\\:ss}" 
+                : "-00:00";
         }
         else
         {
             ProgMedia.Value = 0;
+            TxtPosition.Text = currentPos > TimeSpan.Zero ? currentPos.ToString(@"mm\:ss") : "00:00";
+            TxtRemaining.Text = "-00:00";
         }
     }
 

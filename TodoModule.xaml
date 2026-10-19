@@ -3,90 +3,157 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Width="540" Height="200" Background="Transparent">
 
-    <Grid Margin="18,10,18,12">
+    <!-- Margin aman dari tombol panah notch < > dan titik halaman -->
+    <Grid Margin="42,8,42,28">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/> <!-- Row 0: Top Header Status -->
+            <RowDefinition Height="*"/>    <!-- Row 1: Main Todo Content -->
         </Grid.RowDefinitions>
 
-        <!-- Input Bar Persona Style -->
-        <Grid Grid.Row="0" Margin="0,0,0,10">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="105"/>
-                <ColumnDefinition Width="80"/>
-            </Grid.ColumnDefinitions>
+        <!-- ROW 0: Header Status (Title, Tanggal, Icon Status) -->
+        <Grid Grid.Row="0" Margin="0,0,0,4">
+            <TextBlock Text="TodoList" Foreground="#50C8FF" FontSize="14" FontWeight="Bold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
-            <!-- Textbox Title -->
-            <TextBox x:Name="TxtTaskTitle" Grid.Column="0" Height="30" Background="#0D1930" Foreground="White" 
-                     BorderBrush="#00A6FF" BorderThickness="1.2" Padding="8,4" FontSize="12" 
-                     VerticalContentAlignment="Center" Margin="0,0,6,0">
-                <TextBox.Resources>
-                    <Style TargetType="Border">
-                        <Setter Property="CornerRadius" Value="6"/>
-                    </Style>
-                </TextBox.Resources>
-            </TextBox>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Ellipse Width="6" Height="6" Fill="#00A6FF" Margin="0,0,6,0"/>
+                <TextBlock x:Name="TxtHeaderDate" Text="Mon 19 Oct 2026 12:27" Foreground="#80E0FF" FontSize="11" FontWeight="SemiBold"/>
+            </StackPanel>
 
-            <!-- Dropdown Time -->
-            <ComboBox x:Name="CmbDue" Grid.Column="1" Height="30" SelectedIndex="0" Margin="0,0,6,0"
-                      Background="#0D1930" Foreground="#50C8FF" BorderBrush="#00A6FF" BorderThickness="1.2" FontSize="11">
-                <ComboBoxItem Content="Tanpa Jam"/>
-                <ComboBoxItem Content="+15 Menit"/>
-                <ComboBoxItem Content="+1 Jam"/>
-                <ComboBoxItem Content="+3 Jam"/>
-            </ComboBox>
-
-            <!-- Button Tambah (Persona Gold) -->
-            <Button Grid.Column="2" Content="Tambah" Click="BtnAdd_Click" Height="30" 
-                    Background="#FFC72C" Foreground="#080F20" FontWeight="Bold" FontSize="12" 
-                    BorderThickness="0" Cursor="Hand">
-                <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                    </ControlTemplate>
-                </Button.Template>
-            </Button>
+            <TextBlock Text="ıııı" Foreground="#50C8FF" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
         </Grid>
 
-        <!-- List Todos -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="ListTodos">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Border Background="#0D1930" BorderBrush="#1E3A60" BorderThickness="1" 
-                                CornerRadius="8" Margin="0,0,0,6" Padding="10,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+        <!-- ROW 1: Main Content (Kiri: Counter & Action, Kanan: Scroll Task List) -->
+        <Grid Grid.Row="1" Margin="0,4,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                                <!-- Checkbox -->
-                                <CheckBox Grid.Column="0" IsChecked="{Binding Done}" Click="CheckBox_Click" 
-                                          VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <!-- Kiri: Big Progress Text & Pill Buttons -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                <TextBlock x:Name="TxtProgressFraction" Text="0/0" Foreground="White" FontSize="32" FontWeight="Bold" HorizontalAlignment="Left"/>
+                <TextBlock Text="Task Done Today" Foreground="#80E0FF" FontSize="11" Margin="0,0,0,8"/>
 
-                                <!-- Title -->
-                                <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="White" FontSize="12" 
-                                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                <!-- Row Tombol Add Task & Edit Task -->
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnOpenAdd" Click="BtnOpenAdd_Click" Height="26" Padding="8,0" Margin="0,0,6,0"
+                            Background="#0D1930" BorderBrush="#00A6FF" BorderThickness="1" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" 
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="13">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="6,0">
+                                        <TextBlock Text="⊕ " Foreground="#FFC72C" FontSize="11" FontWeight="Bold"/>
+                                        <TextBlock Text="Add Task" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
 
-                                <!-- Countdown Time Text (Electric Cyan / Gold) -->
-                                <TextBlock Grid.Column="2" Text="{Binding DueText}" Foreground="#FFC72C" FontSize="11" 
-                                           FontWeight="Bold" VerticalAlignment="Center" Margin="10,0"/>
+                    <Button x:Name="BtnOpenEdit" Click="BtnOpenEdit_Click" Height="26" Padding="8,0"
+                            Background="#0D1930" BorderBrush="#00A6FF" BorderThickness="1" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" 
+                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="13">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="6,0">
+                                        <TextBlock Text="✏ " Foreground="#FFC72C" FontSize="10"/>
+                                        <TextBlock Text="Edit Task" Foreground="White" FontSize="10" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
 
-                                <!-- Delete Button -->
-                                <Button Grid.Column="3" Content="✕" Click="BtnDelete_Click" Tag="{Binding Id}" 
-                                        Foreground="#FF5555" Background="Transparent" BorderThickness="0" 
-                                        FontWeight="Bold" FontSize="12" Cursor="Hand"/>
-                            </Grid>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+            <!-- Kanan: Scrollable Task List -->
+            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="ListTodos">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#0D1930" BorderBrush="#1E3A60" BorderThickness="1" 
+                                    CornerRadius="10" Margin="0,0,4,6" Padding="8,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Custom Round Checkbox -->
+                                    <CheckBox Grid.Column="0" IsChecked="{Binding Done}" Click="CheckBox_Click" 
+                                              DataContext="{Binding}" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <CheckBox.Template>
+                                            <ControlTemplate TargetType="CheckBox">
+                                                <Border Width="20" Height="20" CornerRadius="10" 
+                                                        Background="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource CheckBgConverter}}"
+                                                        BorderBrush="#00A6FF" BorderThickness="1.5">
+                                                    <TextBlock Text="✓" Foreground="White" FontSize="12" FontWeight="Bold"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Visibility="{Binding IsChecked, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource BoolToVisConverter}}"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </CheckBox.Template>
+                                    </CheckBox>
+
+                                    <!-- Task Title -->
+                                    <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="White" FontSize="12" FontWeight="SemiBold" 
+                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                    <!-- Alarm / Countdown Tag -->
+                                    <Border Grid.Column="2" Background="#1E3A60" CornerRadius="6" Padding="6,2" VerticalAlignment="Center" Margin="4,0,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⏰ " Foreground="#FFC72C" FontSize="9"/>
+                                            <TextBlock Text="{Binding DueText}" Foreground="#80E0FF" FontSize="10" FontWeight="Bold"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- OVERLAY MODAL: Add / Edit Task Dialog -->
+        <Grid x:Name="TaskOverlay" Grid.RowSpan="2" Background="#FA080F20" Visibility="Collapsed">
+            <Border Background="#0D1930" BorderBrush="#00A6FF" BorderThickness="1.5" CornerRadius="12" 
+                    Width="320" Height="140" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="TxtModalTitle" Text="Add New Task" Foreground="#FFC72C" FontSize="13" FontWeight="Bold"/>
+
+                    <StackPanel Grid.Row="1" Margin="0,8,0,0">
+                        <TextBox x:Name="TxtTaskTitle" Background="#080F20" Foreground="White" BorderBrush="#00A6FF" 
+                                 BorderThickness="1" Height="26" Padding="4,2" FontSize="12"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBlock Text="Timer Alarm:" Foreground="#80E0FF" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="CmbDue" Height="22" FontSize="11" Width="140" Background="#080F20" Foreground="Black">
+                                <ComboBoxItem Content="Tanpa Alarm" IsSelected="True"/>
+                                <ComboBoxItem Content="15 Menit"/>
+                                <ComboBoxItem Content="1 Jam"/>
+                                <ComboBoxItem Content="3 Jam"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button x:Name="BtnDeleteTask" Content="Delete" Click="BtnDeleteTask_Click" Background="#FF4D4D" Foreground="White" 
+                                BorderThickness="0" Padding="10,3" Margin="0,0,6,0" FontSize="11" Cursor="Hand" Visibility="Collapsed"/>
+                        <Button Content="Cancel" Click="BtnCancelOverlay_Click" Background="Transparent" Foreground="#80E0FF" 
+                                BorderThickness="0" Padding="8,3" Margin="0,0,6,0" FontSize="11" Cursor="Hand"/>
+                        <Button Content="Save" Click="BtnSaveTask_Click" Background="#FFC72C" Foreground="#080F20" 
+                                FontWeight="Bold" BorderThickness="0" Padding="12,3" FontSize="11" Cursor="Hand"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

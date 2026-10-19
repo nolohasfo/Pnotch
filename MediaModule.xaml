@@ -2,94 +2,117 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Width="540" Height="200" Background="Transparent">
-    <Grid Margin="18,12">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <!-- Margin 42px di kiri-kanan & 28px di bawah untuk menghindari panah < > dan titik halaman -->
+    <Grid Margin="42,8,42,28">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Row 0: Top Header Status -->
+            <RowDefinition Height="*"/>    <!-- Row 1: Album Art + Title + Lyrics Btn -->
+            <RowDefinition Height="Auto"/> <!-- Row 2: Progress Bar & Timers -->
+            <RowDefinition Height="Auto"/> <!-- Row 3: Player Controls -->
+        </Grid.RowDefinitions>
 
-        <!-- Album Art Card -->
-        <Border Grid.Column="0" CornerRadius="12" Background="#0D1930" 
-                BorderBrush="#00A6FF" BorderThickness="1.5" ClipToBounds="True">
-            <Grid>
-                <Image x:Name="ImgCover" Stretch="UniformToFill"/>
-                <TextBlock x:Name="TxtNoArt" Text="P3 SOUND" Foreground="#50C8FF" FontSize="12" FontWeight="Bold"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Visible"/>
-            </Grid>
-        </Border>
-
-        <!-- Media Info & Controls -->
-        <Grid Grid.Column="1" Margin="16,4,0,4">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-
-            <!-- Judul Lagu -->
-            <TextBlock x:Name="TxtTitle" Grid.Row="0" Text="Tidak Ada Media" Foreground="White" 
-                       FontSize="16" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-
-            <!-- Nama Artis -->
-            <TextBlock x:Name="TxtArtist" Grid.Row="1" Text="-" Foreground="#80E0FF" 
-                       FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-
-            <!-- Progress Bar Line -->
-            <ProgressBar x:Name="ProgMedia" Grid.Row="2" Height="4" VerticalAlignment="Center" 
-                         Background="#1E3A60" Foreground="#00A6FF" BorderThickness="0" Minimum="0" Maximum="100"/>
-
-            <!-- Tombol Kontrol -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Button x:Name="BtnPrev" Content="⏮" Click="BtnPrev_Click" Width="36" Height="36" 
-                        Background="Transparent" Foreground="#50C8FF" BorderThickness="0" FontSize="16" Cursor="Hand"/>
-                
-                <!-- Play Button dalam Warna Persona Gold (#FFC72C) -->
-                <Button x:Name="BtnPlayPause" Content="▶" Click="BtnPlayPause_Click" Width="44" Height="44" Margin="12,0" 
-                        Background="#FFC72C" Foreground="#080F20" BorderThickness="0" FontSize="18" FontWeight="Bold" Cursor="Hand">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border Background="{TemplateBinding Background}" CornerRadius="22">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                        </ControlTemplate>
-                    </Button.Template>
-                </Button>
-
-                <Button x:Name="BtnNext" Content="⏭" Click="BtnNext_Click" Width="36" Height="36" 
-                        Background="Transparent" Foreground="#50C8FF" BorderThickness="0" FontSize="16" Cursor="Hand"/>
-
-                <Button x:Name="BtnLyrics" Content="🎤" Click="BtnLyrics_Click" Width="36" Height="36" Margin="12,0,0,0"
-                        Background="Transparent" Foreground="#FFC72C" BorderThickness="0" FontSize="14" Cursor="Hand"/>
+        <!-- ROW 0: Header Status (Tanggal, Jam, Icon Visualizer) -->
+        <Grid Grid.Row="0" Margin="0,0,0,2">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Ellipse Width="6" Height="6" Fill="#00A6FF" Margin="0,0,6,0"/>
+                <TextBlock x:Name="TxtHeaderDate" Text="Mon 19 Oct 2026 12:25" Foreground="#80E0FF" FontSize="11" FontWeight="SemiBold"/>
             </StackPanel>
+
+            <TextBlock Text="ılıI" Foreground="#50C8FF" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
         </Grid>
 
+        <!-- ROW 1: Album Art + Metadata + Tombol Lirik (Atas Kanan) -->
+        <Grid Grid.Row="1" VerticalAlignment="Center" Margin="0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="48"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Cover Art -->
+            <Border Grid.Column="0" Width="44" Height="44" CornerRadius="8" Background="#0D1930" 
+                    BorderBrush="#00A6FF" BorderThickness="1" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <Grid>
+                    <Image x:Name="ImgCover" Stretch="UniformToFill"/>
+                    <TextBlock x:Name="TxtNoArt" Text="🎵" Foreground="#50C8FF" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Visible"/>
+                </Grid>
+            </Border>
+
+            <!-- Judul & Artis -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,8,0">
+                <TextBlock x:Name="TxtTitle" Text="Tidak Ada Media" Foreground="White" 
+                           FontSize="13" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="TxtArtist" Text="-" Foreground="#80E0FF" 
+                           FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+
+            <!-- Tombol Lirik (Pindah ke samping judul agar tidak numpuk di bawah) -->
+            <Button x:Name="BtnLyrics" Grid.Column="2" Click="BtnLyrics_Click" Width="30" Height="30" 
+                    Background="#0D1930" BorderBrush="#00A6FF" BorderThickness="1" VerticalAlignment="Center" Cursor="Hand">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="15">
+                            <TextBlock Text="💬" Foreground="#FFC72C" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </Grid>
+
+        <!-- ROW 2: Progress Bar & Timers -->
+        <Grid Grid.Row="2" Margin="0,4,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="40"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="40"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="TxtPosition" Grid.Column="0" Text="00:00" Foreground="#50C8FF" FontSize="10" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+
+            <ProgressBar x:Name="ProgMedia" Grid.Column="1" Height="3" VerticalAlignment="Center" 
+                         Margin="6,0" Background="#1E3A60" Foreground="#00A6FF" BorderThickness="0" Minimum="0" Maximum="100"/>
+
+            <TextBlock x:Name="TxtRemaining" Grid.Column="2" Text="-00:00" Foreground="#80E0FF" FontSize="10" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- ROW 3: Player Controls (Dinaikkan agar di atas titik halaman) -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,2,0,0">
+            <Button x:Name="BtnPrev" Content="⏮" Click="BtnPrev_Click" Width="36" Height="28" 
+                    Background="Transparent" Foreground="#50C8FF" BorderThickness="0" FontSize="13" Cursor="Hand"/>
+
+            <Button x:Name="BtnPlayPause" Content="▶" Click="BtnPlayPause_Click" Width="36" Height="28" Margin="14,0" 
+                    Background="Transparent" Foreground="#FFC72C" BorderThickness="0" FontSize="15" FontWeight="Bold" Cursor="Hand"/>
+
+            <Button x:Name="BtnNext" Content="⏭" Click="BtnNext_Click" Width="36" Height="28" 
+                    Background="Transparent" Foreground="#50C8FF" BorderThickness="0" FontSize="13" Cursor="Hand"/>
+        </StackPanel>
+
         <!-- Overlay Lirik Persona 3 Theme -->
-        <Grid x:Name="LyricsOverlay" Grid.ColumnSpan="2" Background="#FA080F20" Visibility="Collapsed">
-            <Grid Margin="12">
+        <Grid x:Name="LyricsOverlay" Grid.RowSpan="4" Background="#FA080F20" Visibility="Collapsed">
+            <Grid Margin="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Lyrics Header -->
-                <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid Grid.Row="0" Margin="0,0,0,6">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border CornerRadius="4" Width="24" Height="24" Background="#0D1930" BorderBrush="#00A6FF" BorderThickness="1" Margin="0,0,8,0" ClipToBounds="True">
+                        <Border CornerRadius="4" Width="20" Height="20" Background="#0D1930" BorderBrush="#00A6FF" BorderThickness="1" Margin="0,0,6,0" ClipToBounds="True">
                             <Image x:Name="LyricsSmallCover" Stretch="UniformToFill"/>
                         </Border>
-                        <TextBlock x:Name="LyricsTxtTitle" Foreground="#50C8FF" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="380"/>
+                        <TextBlock x:Name="LyricsTxtTitle" Foreground="#50C8FF" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="340"/>
                     </StackPanel>
                     <Button Content="✕" Click="BtnCloseLyrics_Click" Foreground="#FFC72C" Background="Transparent" BorderThickness="0" 
-                            HorizontalAlignment="Right" FontSize="14" FontWeight="Bold" Cursor="Hand"/>
+                            HorizontalAlignment="Right" FontSize="13" FontWeight="Bold" Cursor="Hand"/>
                 </Grid>
 
-                <!-- Lyrics Scroll Container -->
                 <ScrollViewer x:Name="LyricsContainer" Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <TextBlock x:Name="TxtNoLyrics" Text="Lirik tidak ditemukan" Foreground="#80E0FF" FontSize="13" 
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,40,0,0" Visibility="Visible"/>
-                        <TextBlock x:Name="TxtLyrics" Foreground="White" FontSize="13" LineHeight="20" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="TxtNoLyrics" Text="Lirik tidak ditemukan" Foreground="#80E0FF" FontSize="12" 
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0" Visibility="Visible"/>
+                        <TextBlock x:Name="TxtLyrics" Foreground="White" FontSize="12" LineHeight="18" TextWrapping="Wrap" HorizontalAlignment="Center"/>
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
